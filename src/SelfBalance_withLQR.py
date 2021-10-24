@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Fri Jul 21 18:08:40 2017
-
-@author: sezan92
-"""
 import sys,time
 import rospy
 from geometry_msgs.msg import Twist
