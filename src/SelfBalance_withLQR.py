@@ -9,11 +9,11 @@ import numpy as np
 from std_msgs.msg import Float32
 
 A = np.array([[0,1],[47.77,0]])
-B = np.array([[  0.  ],
+B = np.array([[  0  ],
        [ 10.52]])
-Q = np.array([[ 100,   0],
-       [  0, 1000]])
-R = 0.001
+Q = np.array([[ 1000,   0],
+       [  0, 10000]])
+R = 1000.0
 K,S,e = lqr(A,B,Q,R)
 
 cmd_vel = "/cmd_vel"
@@ -28,24 +28,24 @@ class SelfBalanceLQR:
         self.subscriber2 = rospy.Subscriber(q_topic,Float32,self.callback_q)
         self.subscriber3= rospy.Subscriber(r_topic,Float32,self.callback_r)
         self.pub1 = rospy.Publisher(Yaw_Topic,Float32,queue_size =1)
-        self.xvelMin= 0
+        self.xvelMin= 0.0
         self.xvelMax = 0.01
-        self.yMin = -0.01
-        self.yMax = 0.01
-        self.y_ = 0
+        self.yMin = -0.0001
+        self.yMax = 0.0001
+        self.y_ = 0.0
         self.Q = Q
         self.R = R
         #xvel = xvel1.output['velocity']
         self.K,self.S,self.e = lqr(A,B,self.Q,self.R)
     def callback(self,data):
         self.K,self.S,self.e = lqr(A,B,self.Q,self.R)
-        y = data.orientation.y
+        y = data.orientation.z
         # print (y)
         if y>self.yMax:
             y = self.yMax
         elif y<self.yMin:
             y = self.yMin
-        # data.orientation.w = y
+        data.orientation.w = y
         vel = Twist()
         diff_yaw = y-self.y_
         np_x = np.array([[y],[diff_yaw]])
@@ -68,12 +68,12 @@ class SelfBalanceLQR:
         self.pub1.publish(data.orientation.w)
     def callback_q(self,data):
         q = data.data
-        self.Q = np.array([[ q,   0],[  0, 10*q]])
+        self.Q = q*Q
         
         
     def callback_r(self,data):
         r = data.data
-        self.R = r
+        self.R = r*R
         
 def main(args):
     '''Initializes and cleanup ros node'''
