@@ -9,7 +9,7 @@ import numpy as np
 from std_msgs.msg import Float32
 
 A = np.array([[0,1],[47.77,0]])
-B = np.array([[  0  ],
+B = np.array([[  0.  ],
        [ 10.52]])
 Q = np.array([[ 100,   0],
        [  0, 1000]])
@@ -28,52 +28,51 @@ class SelfBalanceLQR:
         self.subscriber2 = rospy.Subscriber(q_topic,Float32,self.callback_q)
         self.subscriber3= rospy.Subscriber(r_topic,Float32,self.callback_r)
         self.pub1 = rospy.Publisher(Yaw_Topic,Float32,queue_size =1)
-        self.xvelMin= -0.01
-        self.xvelMax = 0
-        self.yMin = -0.1
-        self.yMax = 0.1
-        self.y_ = 0.0
-        self.Q = Q
-        self.R = R
+        self.xvelMin=-.01
+        self.xvelMax =0.01
+        self.yMin = -0.01
+        self.yMax = 0.01
+        self.y_ = 0
+        self.Q = np.array([[ 100,   0],[  0, 1000]])
+        self.R = 0.0001
         #xvel = xvel1.output['velocity']
         self.K,self.S,self.e = lqr(A,B,self.Q,self.R)
     def callback(self,data):
         self.K,self.S,self.e = lqr(A,B,self.Q,self.R)
-        y = data.orientation.y*(180/3.1415)
-        # print (y)
-        if y > self.yMax:
+        y = data.orientation.y*180/3.1416
+        if y>self.yMax:
             self.yMax = y
-        elif y < self.yMin:
-            self.yMin = y
-        # data.orientation.w = y
+        elif y<self.yMin:
+            self.yMin =y
         vel = Twist()
         diff_yaw = y-self.y_
         np_x = np.array([[y],[diff_yaw]])
+
         xvel = self.K.dot(np_x)[0,0]
-        if xvel>=self.xvelMax:
-            xvel = self.xvelMin
-        elif xvel<=self.xvelMin:
-            xvel = self.xvelMax
+       
+        if xvel>self.xvelMax:
+            self.xvelMax=xvel
+        elif xvel<self.xvelMin:
+            self.xvelMin = xvel
         vel.linear.x = xvel
         vel.linear.y = 0
         vel.linear.z = 0
-        vel.angular.x = 0
+        vel.angular.x =0
         vel.angular.y = 0
         vel.angular.z = 0
         self.pub.publish(vel)
-        # print ("Max vel " + str(self.xvelMax) + " & Min vel " + str(self.xvelMin) + " Max y " + str(self.yMax*180/3.1416) +" & Min y" + str(self.yMin*180/3.1416))
-        print ("Velocity "+ str(xvel)+ " & yaw " + str(y))
-        self.y_ = diff_yaw
-        # data.orientation.w = y
+        #print "Max vel " + str(self.xvelMax) + " & Min vel " + str(self.xvelMin) + " Max y " + str(self.yMax*180/3.1416) +" & Min y" + str(self.yMin*180/3.1416)
+        #print "Velocity "+ str(xvel)+ " & yaw " + str(y)
+        self.y_ = y
         self.pub1.publish(data.orientation.y)
     def callback_q(self,data):
         q = data.data
-        self.Q = q*Q
+        self.Q = np.array([[ q,   0],[  0, 10*q]])
         
         
     def callback_r(self,data):
         r = data.data
-        self.R = r*R
+        self.R = r
         
 def main(args):
     '''Initializes and cleanup ros node'''
